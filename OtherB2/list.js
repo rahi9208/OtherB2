@@ -18,7 +18,10 @@ exports.handler = function (event, context, callback) {
 		TableName: 'otherb2', ExpressionAttributeValues: { ':it': itemType }, FilterExpression: 'itemType = :it'
 	}, function (err, data) {
 		if (!err && data.Items) {
-			response.body = JSON.stringify(data.Items);
+			response.body = JSON.stringify(data.Items.map((item) => {
+				item.image = "https://s3.amazonaws.com/" + process.env["IMAGE_BUCKET"] + "/" + item.itemCode + ".jpg";
+				return item;
+			}));
 		} else {
 			response.statusCode = 404;
 			response.body = "No items found";
