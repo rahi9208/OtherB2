@@ -1,5 +1,6 @@
 let AWS = require('aws-sdk');
 const ddb = new AWS.DynamoDB.DocumentClient();
+let translation = new AWS.Translate();
 exports.handler = function (event, context, callback) {
 
 	let response = {
@@ -16,12 +17,13 @@ exports.handler = function (event, context, callback) {
 
 	ddb.scan({
 		TableName: 'otherb2', ExpressionAttributeValues: { ':it': itemType }, FilterExpression: 'itemType = :it'
-	}, function (err, data) {
+	}, async function (err, data) {
 		if (!err && data.Items) {
-			response.body = JSON.stringify(data.Items.map((item) => {
+			response.body = JSON.stringify(await Promise.all(data.Items.map(async (item) => {
 				item.image = "https://s3.amazonaws.com/" + process.env["IMAGE_BUCKET"] + "/" + item.itemCode + ".jpg";
+				item.itemName = await translateName(item.itemName, "zh");
 				return item;
-			}));
+			})));
 		} else {
 			response.statusCode = 404;
 			response.body = "No items found";
@@ -29,4 +31,9 @@ exports.handler = function (event, context, callback) {
 		callback(null, response);
 	});
 
+}
+
+
+async function translateName(name, to) {
+	return (await translation.translateText({ SourceLanguageCode: "en", TargetLanguageCode: to, Text: name }).promise()).TranslatedText;
 }
